@@ -15,7 +15,7 @@ class KnowledgeBaseService:
     """知识库业务逻辑服务类"""
 
     def __init__(self):
-        self.vector_stores_dir = '../core/vector_store/deepseek_chroma_db'  # 向量库目录（如 data/vector_stores/）
+        self.vector_stores_dir = '../core/vector_store/nomic_chroma_db'  # 向量库目录（如 data/vector_stores/）
 
     def query_knowledge_base(self, query_text: str, top_k: int) -> List[
         Dict[str, Any]]:

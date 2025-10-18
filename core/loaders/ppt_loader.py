@@ -1,9 +1,9 @@
 import os.path
-
 from core.loaders.base_loader import BaseLoader
 from langchain.schema import Document
 from typing import List
 from pptx import Presentation
+
 class PptLoader(BaseLoader):
 
     """加载PPT(.pptx)文件内容的加载器"""
@@ -19,6 +19,7 @@ class PptLoader(BaseLoader):
             raise FileNotFoundError(f"文件不存在: {file_path}")
         if not file_path.lower().endswith('.pptx'):
             raise ValueError(f"不支持的文件格式，需要.pptx: {file_path}")
+
 
     def load(self) -> List[Document]:
         """

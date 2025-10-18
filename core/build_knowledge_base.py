@@ -57,7 +57,7 @@ def build_knowledge_base(
 if __name__ == "__main__":
     nomic_api_key = "nk-wi3IFnraTtjA8U_Uaiby-nSGowbWoYKwlVT15UKcoOY"
     source_path = "../data/知识库资料_22033"  # 文件夹/单个文件都支持
-    persist_dir = "vector_store/deepseek_chroma_db"
+    persist_dir = "vector_store/nomic_chroma_db"
 
     store, count = build_knowledge_base(
         source_path=source_path,
