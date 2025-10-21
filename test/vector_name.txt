@@ -1,0 +1,6 @@
+2: daily_health_consult
+3: warning_explain
+4: machine_maintenance
+5: breath_report_explain
+6: first_use_guidance
+

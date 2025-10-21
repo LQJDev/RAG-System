@@ -1,5 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, Form, Depends
-from typing import List
+from fastapi import APIRouter, Depends, HTTPException
 
 from .schemas import (
     QueryRequest,
@@ -32,3 +31,34 @@ async def query_kb(
         message=f"检索到 {len(results)} 条相关文档",
         data=results
     )
+
+
+@router.post("/retrieval/query_by_name", response_model=QueryResponse, summary="按知识库名称检索文档")
+async def query_kb_by_name(
+    request: QueryRequest,  # 自动解析请求参数
+    service: KnowledgeBaseService = Depends(get_kb_service)
+):
+    """
+    根据指定知识库名称检索相关文档。
+    - `query_text`: 查询内容
+    - `kb_name`: 知识库名称（如 daily_health_consult / machine_maintenance）
+    - `top_k`: 返回的结果数量
+    """
+
+    print(f"按知识库检索: {request.kb_name}, 查询内容: {request.query_text}")
+
+    try:
+        results = service.query_knowledge_base_by_name(
+            query_text=request.query_text,
+            kb_name=request.kb_name,
+            top_k=request.top_k,
+        )
+
+        return QueryResponse(
+            status="success",
+            message=f"[{request.kb_name}] 检索到 {len(results)} 条相关文档",
+            data=results
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"检索失败: {str(e)}")

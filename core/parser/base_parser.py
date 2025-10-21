@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from langchain.schema import Document
 from typing import List
 
-class BaseLoader(ABC):
+class BaseParser(ABC):
     """加载器基类，定义统一接口"""
 
     @abstractmethod

@@ -1,12 +1,20 @@
 import os
-from core.loaders.pdf_loader import PdfLoader
-from core.loaders.ppt_loader import PptLoader
-from core.loaders.docx_loader import DocxLoader
+from core.parser.pdf_parser import PdfLoader
+from core.parser.ppt_parser import PptLoader
+from core.parser.docx_parser import DocxLoader
+from core.parser.docling_parser import DoclingParser
+from langchain_docling import DoclingLoader
 from typing import List, Tuple
+# LOADER_MAPPING = {
+#     ".pdf": PdfLoader,
+#     ".docx": DocxLoader,
+#     ".pptx": PptLoader
+# }
+
 LOADER_MAPPING = {
-    ".pdf": PdfLoader,
-    ".docx": DocxLoader,
-    ".pptx": PptLoader
+    ".pdf": DoclingParser,
+    ".docx": DoclingParser,
+    ".pptx": DoclingParser
 }
 
 class Loader_Factory:
@@ -21,7 +29,7 @@ class Loader_Factory:
         return loader
 
     @staticmethod
-    def create_loader_for_files(file_paths: str) -> List[Tuple[str, object]]:
+    def create_loader_for_files(file_paths: List[str]) -> List[Tuple[str, object]]:
         """新增：批量处理文件路径，返回 (文件路径, Loader实例) 列表（无重复判断）"""
         valid_loaders = []
         for file_path in file_paths:

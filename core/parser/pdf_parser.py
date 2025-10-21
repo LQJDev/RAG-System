@@ -5,7 +5,7 @@ import pdfplumber
 import pytesseract
 from PIL import Image
 from langchain.schema import Document
-from langchain.document_loaders.base import BaseLoader
+from core.parser.base_parser import BaseParser
 from typing import List
 import re
 
@@ -13,7 +13,7 @@ import re
 pytesseract.pytesseract.tesseract_cmd = r"F:\Program Files\Tesseract-OCR\tesseract.exe"
 
 
-class PdfLoader(BaseLoader):
+class PdfParser(BaseParser):
     """智能 PDF 加载器：自动判断是否需要 OCR"""
 
     def __init__(self, file_path: str, use_ocr_threshold: float = 0.3):

@@ -1,6 +1,6 @@
 import os
 from langchain_nomic.embeddings import NomicEmbeddings
-
+from dotenv import load_dotenv
 
 def get_nomic_embeddings(api_key: str = None) -> NomicEmbeddings:
     """
@@ -8,7 +8,7 @@ def get_nomic_embeddings(api_key: str = None) -> NomicEmbeddings:
     自动检测 API Key、模型可用性，并输出图标提示。
     """
     print("🔧 正在初始化 Nomic Embeddings...")
-
+    load_dotenv()
     # 检查 API Key
     api_key = os.getenv("NOMIC_API_KEY")
     if not api_key:

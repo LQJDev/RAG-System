@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>RAG 智能检索助手</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet"/>
+  <style>
+    :root {
+      --gpt-bg: linear-gradient(180deg, #f7f9fc 0%, #eef3f8 100%);
+      --gpt-card: #ffffff;
+      --gpt-user: #0071e3;
+      --gpt-assistant: #10a37f;
+      --gpt-text: #1d1d1f;
+      --gpt-light: #a0a0a5;
+      --gpt-border: #e6e6e6;
+    }
+    body {background: var(--gpt-bg); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin:0; display:flex; flex-direction:column; min-height:100vh;}
+    .header {background: rgba(255,255,255,0.8); backdrop-filter: blur(8px); border-bottom:1px solid var(--gpt-border); padding:12px 0; position:sticky; top:0; z-index:10;}
+    .header-title {font-size:18px; font-weight:600; display:flex; align-items:center; gap:8px;}
+    .header-title i {color:var(--gpt-assistant);}
+    .chat-container {flex:1; display:flex; flex-direction:column; max-width:850px; margin:0 auto; padding:20px 15px 140px; overflow-y:auto;}
+    .message {display:flex; align-items:flex-start; gap:12px; margin-bottom:20px; animation:fadeIn 0.3s ease;}
+    .message-avatar {width:38px; height:38px; border-radius:50%; display:flex; justify-content:center; align-items:center; font-size:18px; flex-shrink:0;}
+    .user-avatar {background-color:var(--gpt-user); color:#fff;}
+    .assistant-avatar {background-color:#e8f8f4; color:var(--gpt-assistant);}
+    .message-content {padding:12px 16px; border-radius:16px; max-width:75%; line-height:1.6; white-space:pre-wrap; word-break:break-word; box-shadow:0 2px 6px rgba(0,0,0,0.05);}
+    .user-message {flex-direction:row-reverse;}
+    .user-content {background-color:var(--gpt-user); color:#fff; border-top-right-radius:4px;}
+    .assistant-content {background-color:var(--gpt-card); border:1px solid var(--gpt-border); border-top-left-radius:4px;}
+    .source-tag {display:inline-block; margin-top:6px; font-size:12px; color:var(--gpt-light); background-color:#f4f5f7; padding:3px 8px; border-radius:6px;}
+    .input-container {position:fixed; bottom:0; left:0; width:100%; background:rgba(255,255,255,0.9); border-top:1px solid var(--gpt-border); box-shadow:0 -2px 12px rgba(0,0,0,0.05);}
+    .input-card {max-width:850px; margin:0 auto; padding:16px;}
+    .form-row {display:flex; gap:12px;}
+    .query-input {flex:1; border:1px solid var(--gpt-border); border-radius:12px; padding:12px 16px; font-size:16px; resize:none; background-color:#fafafa; transition:all 0.2s;}
+    .query-input:focus {outline:none; border-color:var(--gpt-user); box-shadow:0 0 0 3px rgba(0,113,227,0.15);}
+    .submit-btn {width:56px; height:56px; border-radius:50%; border:none; background-color:var(--gpt-user); color:white; display:flex; align-items:center; justify-content:center; transition:0.2s;}
+    .submit-btn:hover {background-color:#0077ed; transform:scale(1.05);}
+    .loading-dots {display:flex; gap:6px; padding:4px;}
+    .loading-dot {width:8px; height:8px; border-radius:50%; background-color:var(--gpt-light); animation:pulse 1.2s infinite ease-in-out;}
+    .loading-dot:nth-child(2) {animation-delay:0.2s;}
+    .loading-dot:nth-child(3) {animation-delay:0.4s;}
+    @keyframes pulse {0%,80%,100%{opacity:0.3; transform:scale(0.8);} 40%{opacity:1; transform:scale(1.2);}}
+    @keyframes fadeIn {from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);}}
+  </style>
+</head>
+<body>
+<div class="header">
+  <div class="container">
+    <div class="header-title">
+      <i class="bi bi-robot"></i>
+      <span>RAG 智能检索助手</span>
+    </div>
+  </div>
+</div>
+
+<div class="chat-container" id="chatHistory">
+  <div class="empty-state text-center text-secondary mt-5">
+    <i class="bi bi-chat-dots" style="font-size:40px;"></i>
+    <p class="mt-3">输入你的问题，我会从知识库中检索最相关的信息。</p>
+  </div>
+</div>
+
+<div class="input-container">
+  <div class="input-card">
+    <form id="queryForm" class="form-row">
+      <textarea id="queryInput" class="query-input" placeholder="请输入你的问题..." required></textarea>
+      <button type="submit" id="submitBtn" class="submit-btn">
+        <i class="bi bi-send"></i>
+      </button>
+    </form>
+    <div class="d-flex justify-content-between align-items-center mt-2 text-muted small">
+      <div>
+        知识库：
+        <select id="collectionSelect" class="border rounded px-2 py-1">
+          <option value="daily_health_consult">日常健康咨询</option>
+          <option value="warning_explain">报警说明</option>
+          <option value="machine_maintenance">设备维护</option>
+          <option value="breath_report_explain">呼吸报告说明</option>
+          <option value="first_use_guidance">初次使用指导</option>
+        </select>
+      </div>
+      <div>
+        返回数量：
+        <select id="topKSelect" class="border rounded px-2 py-1">
+          <option value="1">1条</option>
+          <option value="3" selected>3条</option>
+          <option value="5">5条</option>
+          <option value="10">10条</option>
+        </select>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const chatHistory = document.getElementById('chatHistory');
+  const emptyState = document.querySelector('.empty-state');
+  const queryForm = document.getElementById('queryForm');
+  const queryInput = document.getElementById('queryInput');
+  const submitBtn = document.getElementById('submitBtn');
+  const topKSelect = document.getElementById('topKSelect');
+  const collectionSelect = document.getElementById('collectionSelect');
+
+  queryForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const queryText = queryInput.value.trim();
+    const topK = parseInt(topKSelect.value);
+    const kbName = collectionSelect.value;
+
+    if (!queryText) return;
+    queryInput.value = '';
+    if (emptyState) emptyState.style.display = 'none';
+    addMessageToHistory('user', queryText);
+    submitBtn.disabled = true;
+    const loadingId = addLoadingToHistory();
+
+    try {
+      const response = await fetch('http://localhost:8000/retrieval/query_by_name', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          query_text: queryText,
+          kb_name: kbName,
+          top_k: topK
+        })
+      });
+      const data = await response.json();
+      removeLoadingFromHistory(loadingId);
+
+      if (response.ok && data.status === 'success') {
+        const results = data.data || [];
+        let assistantContent = '';
+        if (results.length === 0) {
+          assistantContent = '<p>未检索到相关文档，请尝试调整关键词。</p>';
+        } else {
+          results.forEach((item, idx) => {
+            assistantContent += `<p><strong>相关结果 ${idx + 1}：</strong>${item.content}</p>`;
+            assistantContent += `<span class="source-tag">来源：${item.source || '未知'} | 相似度：${item.similarity_score.toFixed(4)}</span>`;
+          });
+        }
+        addMessageToHistory('assistant', assistantContent);
+      } else {
+        throw new Error(data.message || '检索失败');
+      }
+    } catch (err) {
+      console.error("请求出错：", err);
+      removeLoadingFromHistory(loadingId);
+      addMessageToHistory('assistant', `<p class="error-message">❌ 错误：${err.message}</p>`);
+    } finally {
+      submitBtn.disabled = false;
+      scrollToBottom();
+    }
+  });
+
+  function addMessageToHistory(role, content) {
+    const msgDiv = document.createElement('div');
+    msgDiv.className = `message ${role}-message`;
+    const avatarHtml = role === 'user'
+      ? `<div class="message-avatar user-avatar"><i class="bi bi-person"></i></div>`
+      : `<div class="message-avatar assistant-avatar"><i class="bi bi-robot"></i></div>`;
+    const contentHtml = `<div class="message-content ${role === 'user' ? 'user-content' : 'assistant-content'}">${content}</div>`;
+    msgDiv.innerHTML = avatarHtml + contentHtml;
+    chatHistory.appendChild(msgDiv);
+    scrollToBottom();
+    return msgDiv; // ✅ 返回 DOM
+  }
+
+  function addLoadingToHistory() {
+    const ld = addMessageToHistory('assistant', `<div class="loading-dots"><div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div></div>`);
+    const lid = `loading-${Date.now()}`;
+    ld.id = lid;
+    return lid;
+  }
+
+  function removeLoadingFromHistory(lid) {
+    const el = document.getElementById(lid);
+    if (el) el.remove();
+  }
+
+  function scrollToBottom() {
+    chatHistory.scrollTo({top: chatHistory.scrollHeight, behavior: 'smooth'});
+  }
+});
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

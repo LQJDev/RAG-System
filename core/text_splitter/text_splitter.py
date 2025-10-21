@@ -5,8 +5,8 @@ from typing import List
 
 def split_documents(
         documents: List[Document],
-        chunk_size: int = 1000, # 文本块大小
-        chunk_overlap: int = 1000, # 文本块重叠部分
+        chunk_size: int = 800, # 文本块大小
+        chunk_overlap: int = 100, # 文本块重叠部分
         separators: List[str] = None
 ) -> List[Document]:
     """

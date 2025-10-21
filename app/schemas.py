@@ -5,6 +5,7 @@ from typing import List
 class QueryRequest(BaseModel):
     """检索知识库的请求参数"""
     query_text: str = Field(..., description="检索的查询文本", min_length=1)
+    kb_name: str = Field(..., description="知识库名称（如 daily_health_consult）")
     top_k: int = Field(3, description="返回最相关的文档数量", ge=1, le=20)  # 限制1-20条
 
 # ------------------- 响应模型 -------------------

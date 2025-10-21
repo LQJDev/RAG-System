@@ -1,11 +1,11 @@
-from langchain.document_loaders.base import BaseLoader
+from core.parser.base_parser import BaseParser
 from langchain.schema import Document
-from typing import List, Optional
+from typing import List
 import os
 from docx import Document as DocxDocument
 
 
-class DocxLoader(BaseLoader):
+class DocxLoader(BaseParser):
     """加载DOCX文件内容的加载器"""
 
     def __init__(self, file_path: str):
