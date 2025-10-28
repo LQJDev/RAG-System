@@ -53,6 +53,7 @@ async def query_kb_by_name(
             kb_name=request.kb_name,
             top_k=request.top_k,
         )
+        print(f"最终的结果是: {results[0].get('content')}")
 
         return QueryResponse(
             status="success",

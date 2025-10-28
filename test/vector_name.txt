@@ -3,4 +3,6 @@
 4: machine_maintenance
 5: breath_report_explain
 6: first_use_guidance
+7: daily_use_guidance
+9: voice_encourage_info
 

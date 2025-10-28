@@ -5,7 +5,7 @@ import os
 from docx import Document as DocxDocument
 
 
-class DocxLoader(BaseParser):
+class DocxParser(BaseParser):
     """加载DOCX文件内容的加载器"""
 
     def __init__(self, file_path: str):

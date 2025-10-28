@@ -5,7 +5,7 @@ from typing import List
 
 def split_documents(
         documents: List[Document],
-        chunk_size: int = 800, # 文本块大小
+        chunk_size: int = 1500, # 文本块大小
         chunk_overlap: int = 100, # 文本块重叠部分
         separators: List[str] = None
 ) -> List[Document]:
@@ -23,13 +23,14 @@ def split_documents(
         """
     # 默认分隔符（中文优先按段落/句子分割，英文按标点分割）
     default_separators = [
-        "\n\n",  # 优先按空行（段落）分割
+        # 新增：优先按四级标题分割（单个步骤为一个单元）
+        "#### ",
+        "\n\n",  # 再按空行（段落）分割
         "\n",  # 按换行分割
         "。", "！", "？",  # 中文句子结尾
         ".", "!", "?",  # 英文句子结尾
-        "，", "，", ";", ":",  # 中文逗号/分号
-        " ",  # 空格
-        ""  # 最后兜底（按字符强制分割）
+        "，", ";", ":",  # 中文逗号/分号
+        " ", ""
     ]
 
     # 使用自定义分隔符（如果提供）

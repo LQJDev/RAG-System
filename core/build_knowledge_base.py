@@ -1,7 +1,7 @@
 from typing import Tuple
 from langchain_chroma import Chroma
 from core.vector_store.vector_store_manager import create_or_load_vector_store
-from core.embeddings.nomic_embeddings import get_nomic_embeddings
+from chromadb import PersistentClient
 from core.processor.file_processor import load_documents  # 导入优化后的加载函数
 from core.text_splitter import text_splitter
 from core.embeddings.bge_large_zh_embeddings import get_bge_large_zh_embeddings
@@ -38,11 +38,16 @@ def build_knowledge_base(
     if not documents:
         print("未加载到任何文档内容")
         return None, 0
-
+    for doc in documents:
+        print(doc.page_content)
+        print("=================")
     # 4. 文本分割
     print(f"开始分割 {len(documents)} 个文档...")
     documents = text_splitter.split_documents(documents, chunk_size, chunk_overlap)
     print(f"文本分割完成，得到 {len(documents)} 个文本块")
+    for doc in documents:
+        print(doc.page_content)
+        print("======================")
 
     # 5. 创建向量存储
     vector_store = create_or_load_vector_store(
@@ -105,20 +110,49 @@ def append_to_knowledge_base(
     return vector_store, added_count
 
 
+def delete_langchain_chroma(
+        persist_directory: str,
+        collection_name: str
+) -> bool:
+    """
+    删除LangChain-Chroma创建的指定向量库
+
+    Args:
+        persist_directory: 向量库存储目录（与创建时一致）
+        collection_name: 向量库名称（与创建时的collection_name一致）
+
+    Returns:
+        是否删除成功
+    """
+    try:
+        # 1. 连接到存储目录（使用原生Chroma客户端，更直接操作collection）
+        client = PersistentClient(path=persist_directory)
+
+        # 2. 尝试删除指定名称的向量库
+        client.delete_collection(name=collection_name)
+
+        print(f"LangChain-Chroma向量库 '{collection_name}' 删除成功（存储目录：{persist_directory}）")
+        return True
+    except Exception as e:
+        print(f"删除失败：{str(e)}")
+        return False
+
+
 
 
 # 测试
 if __name__ == "__main__":
     source_path = "../data/知识库资料_22033/2. 日常健康咨询"
-    persist_dir = "vector_store/docling_chroma_db"
+    persist_dir = "vector_store/md_chroma_db"
     kb_name = "daily_health_consult"  # ✅ 知识库名称
 
     store, count = build_knowledge_base(
         source_path=source_path,
         persist_dir=persist_dir,
         name=kb_name,
-        chunk_size=800,
-        chunk_overlap=80,
+        chunk_size=1500,
+        chunk_overlap=100,
         batch_size=20
     )
     print(f"知识库构建完成，共添加 {count} 个文本块")
+    # delete_langchain_chroma("vector_store/md_chroma_db", "daily_health_consult")

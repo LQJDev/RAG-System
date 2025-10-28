@@ -1,37 +1,47 @@
-# semantic_split_test.py
-from langchain_community.embeddings import HuggingFaceBgeEmbeddings
-from langchain_experimental.text_splitter import SemanticChunker
+from pathlib import Path
+import re
 
-def test_semantic_chunking():
-    # ===== 1️⃣ 初始化中文 bge 向量模型 =====
-    print("🚀 正在加载中文向量模型 BAAI/bge-large-zh ...")
-    embeddings = HuggingFaceBgeEmbeddings(model_name="BAAI/bge-large-zh")
 
-    # ===== 2️⃣ 创建语义分割器 =====
-    splitter = SemanticChunker(
-        embeddings=embeddings,
-        breakpoint_threshold_type="percentile"  # "standard_deviation" 也可以
-    )
+def load_and_split_markdown(file_path: str):
+    """
+    加载 Markdown 文件，并按标题层级（###）进行语义分块。
+    最小粒度为 ### 小节。
+    """
+    file_path = Path(file_path)
+    if not file_path.exists():
+        raise FileNotFoundError(f"文件不存在：{file_path}")
 
-    # ===== 3️⃣ 准备一段长文本 =====
-    text = """
-患者因呼吸衰竭入住重症监护室，开始接受高流量鼻导管氧疗（HFNC）。
-经过两天治疗后，病情有所好转，呼吸频率下降，血氧饱和度稳定在95%以上。
-医生考虑逐步撤机，并评估患者自主呼吸能力。
-撤机过程中需密切监测患者呼吸参数及血气变化，如出现呼吸窘迫或二氧化碳潴留需重新上机。
-患者家属对治疗方案表示理解与支持。
-"""
+    print(f"📄 开始加载 Markdown 文件：{file_path.name}")
 
-    # ===== 4️⃣ 语义分割 =====
-    docs = splitter.create_documents([text])
-    print(f"\n📄 共分割出 {len(docs)} 个语义片段：\n")
+    # 1️⃣ 读取 Markdown 文本
+    with open(file_path, "r", encoding="utf-8") as f:
+        text = f.read()
 
-    # ===== 5️⃣ 打印分割结果 =====
-    for i, doc in enumerate(docs, 1):
-        content = doc.page_content.strip().replace("\n", "")
-        print(f"--- 段落 {i}（长度 {len(content)}）---")
-        print(content)
-        print()
+    # 2️⃣ 去除多余空行
+    text = re.sub(r"\n{2,}", "\n\n", text.strip())
+
+    # 3️⃣ 正则分块，以 ### 为最小单位（保留标题）
+    # 使用非贪婪匹配：匹配从 ### 开始到下一个 ### 或文件末尾
+    pattern = r"(### .+?)(?=\n### |\Z)"
+    matches = re.findall(pattern, text, flags=re.S)
+
+    # 如果没有 ###，尝试按 ## 分
+    if not matches:
+        pattern = r"(## .+?)(?=\n## |\Z)"
+        matches = re.findall(pattern, text, flags=re.S)
+
+    print(f"🧩 共生成 {len(matches)} 个分块\n")
+
+    # 4️⃣ 打印示例
+    for i, block in enumerate(matches[:10]):  # 仅预览前 10 块
+        print(f"🔹 分块 {i + 1}")
+        print("-" * 40)
+        print(block.strip())
+        print("=" * 60 + "\n")
+
+    return matches
+
 
 if __name__ == "__main__":
-    test_semantic_chunking()
+    md_path = r"D:\PythonProject\RAG-System\data\知识库资料_22033\2. 日常健康咨询\临床培训PPT\OSA疾病介绍.md"
+    split_docs = load_and_split_markdown(md_path)

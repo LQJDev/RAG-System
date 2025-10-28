@@ -1,9 +1,6 @@
 import os
-from core.parser.pdf_parser import PdfLoader
-from core.parser.ppt_parser import PptLoader
-from core.parser.docx_parser import DocxLoader
 from core.parser.docling_parser import DoclingParser
-from langchain_docling import DoclingLoader
+from core.parser.markdown_parser import MarkDownParser
 from typing import List, Tuple
 # LOADER_MAPPING = {
 #     ".pdf": PdfLoader,
@@ -11,10 +8,14 @@ from typing import List, Tuple
 #     ".pptx": PptLoader
 # }
 
+# LOADER_MAPPING = {
+#     ".pdf": DoclingParser,
+#     ".docx": DoclingParser,
+#     ".pptx": DoclingParser
+# }
+
 LOADER_MAPPING = {
-    ".pdf": DoclingParser,
-    ".docx": DoclingParser,
-    ".pptx": DoclingParser
+    ".md": MarkDownParser,
 }
 
 class Loader_Factory:
