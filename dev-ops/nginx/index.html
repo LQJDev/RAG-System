@@ -385,7 +385,7 @@
                 const mdHtml = marked.parse ? marked.parse(item.content) : marked(item.content);
                 assistantContent += `
                   <div class="md-result-item">
-                    <p><strong>相关结果 ${idx + 1}：</strong></p>
+                    <p><strong>相关结果</strong></p>
                     ${mdHtml}
                     <span class="source-tag">来源：${item.source || '未知'} | 相似度：${item.similarity_score.toFixed(4)}</span>
                   </div>

@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Sleep Therapy Report</title>
+    <!-- 使用国内稳定 CDN -->
+    <script src="https://cdn.bootcdn.net/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+    <style>
+        /* === 全局样式 === */
+        body { font-family: "Microsoft YaHei", "Heiti SC", sans-serif; margin: 0; padding: 0; color: #333; font-size: 12px; background: #eee; }
+        .page { width: 210mm; height: 296mm; padding: 15mm; box-sizing: border-box; background: white; margin: 20px auto; position: relative; overflow: hidden; }
+        @media print { body { background: none; } .page { margin: 0; page-break-after: always; height: 100vh; } }
+
+        .header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #5b9bd5; padding-bottom: 8px; margin-bottom: 20px; }
+        .header-info { line-height: 1.5; color: #555; font-size: 11px; }
+
+        .logo { height: 45px; display: flex; align-items: center; justify-content: flex-end; }
+        .logo img { height: 100%; width: auto; object-fit: contain; }
+
+        .footer { position: absolute; bottom: 10mm; left: 15mm; right: 15mm; border-top: 1px solid #ccc; padding-top: 5px; display: flex; justify-content: space-between; color: #888; font-size: 10px; }
+
+        .section-bar { background: #f5f5f5; padding: 6px 10px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-left: 4px solid #5b9bd5; }
+        .section-title { font-weight: bold; font-size: 14px; color: #333; }
+        .section-sub { font-size: 12px; color: #666; }
+
+        h4 { margin: 15px 0 8px 0; font-size: 13px; border-bottom: 1px solid #eee; padding-bottom: 4px; }
+
+        /* 官方样式的 KV 布局 */
+        .kv-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px 20px; font-size: 12px; margin-bottom: 20px; }
+        .kv-item { display: flex; justify-content: space-between; align-items: baseline; }
+        .k { color: #555; }
+        .v { font-weight: bold; color: #000; margin-left: 5px;}
+
+        .time-range-row { font-size: 12px; margin-bottom: 15px; font-weight: bold; }
+
+        .stat-box { margin-bottom: 15px; }
+        .stat-head { font-weight: bold; font-size: 13px; padding-left: 8px; border-left: 4px solid #333; margin-bottom: 6px; }
+        .stat-row { display: flex; justify-content: space-between; width: 85%; font-size: 12px; margin-bottom: 4px; padding-left: 12px; }
+
+        .sign-area { display: flex; justify-content: space-between; margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; }
+        .sign-col { width: 45%; }
+        .sign-line { border-bottom: 1px solid #000; display: inline-block; width: 150px; margin-left: 5px; }
+        .advice-box { border: 1px solid #999; height: 80px; margin-top: 10px; width: 100%; }
+
+        .chart-lg { width: 100%; height: 220px; margin-bottom: 5px; }
+        .chart-sm { width: 100%; height: 160px; margin-bottom: 5px; }
+        .chart-gantt-all { width: 100%; height: 500px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+    <!-- PAGE 1: 基础信息 (高度还原版) -->
+    <div class="page">
+        <div class="header">
+            <div class="header-info">
+                <div>打印日期: {{ info.print_date }}</div>
+                <div>姓名: {{ info.name }}</div>
+                <div>报告时段: {{ info.range }}</div>
+            </div>
+            <div class="logo">
+                {% if logo_src %}
+                    <img src="{{ logo_src }}" alt="Logo">
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="section-bar">
+            <span class="section-title">基础信息</span>
+            <span class="section-sub">睡眠治疗系列 &nbsp;&nbsp; 如意系列 {{ info.model }}</span>
+        </div>
+
+        <h4>用户信息</h4>
+        <div class="kv-grid">
+            <div class="kv-item"><span class="k">患者信息:</span><span class="v">{{ info.name }}</span></div>
+            <div class="kv-item"><span class="k">身高:</span><span class="v">0CM</span></div>
+            <div class="kv-item"><span class="k">性别:</span><span class="v">{{ info.gender }}</span></div>
+            <div class="kv-item"><span class="k">体重:</span><span class="v">0KG</span></div>
+            <div class="kv-item"><span class="k">电话:</span><span class="v">{{ info.phone }}</span></div>
+            <div class="kv-item"><span class="k">BMI:</span><span class="v">0</span></div>
+            <div class="kv-item"><span class="k">出生年月:</span><span class="v">{{ info.age }}</span></div>
+            <div class="kv-item"><span class="k">年龄:</span><span class="v"></span></div>
+            <div class="kv-item"><span class="k">邮箱:</span><span class="v">{{ info.email }}</span></div>
+        </div>
+
+        <h4>治疗设置</h4>
+        <div class="kv-grid">
+            <!-- 第一行 -->
+            <div class="kv-item"><span class="k">模式:</span><span class="v">{{ settings.mode }}</span></div>
+            <div class="kv-item"><span class="k">最大IPAP:</span><span class="v">{{ settings.max_ipap }} cmH₂O</span></div>
+            <div class="kv-item"><span class="k">最小EPAP:</span><span class="v">{{ settings.min_epap }} cmH₂O</span></div>
+
+            <!-- 第二行 -->
+            <div class="kv-item"><span class="k">最大PS:</span><span class="v">{{ settings.max_ps }} cmH₂O</span></div>
+            <div class="kv-item"><span class="k">最小PS:</span><span class="v">{{ settings.min_ps }} cmH₂O</span></div>
+            <div class="kv-item"><span class="k">COMF设置:</span><span class="v">{{ settings.comf }}</span></div>
+
+            <!-- 第三行 -->
+            <div class="kv-item"><span class="k">升压档:</span><span class="v">{{ settings.rise_time }}</span></div>
+            <div class="kv-item"><span class="k">触发灵敏度:</span><span class="v">{{ settings.trigger }}</span></div>
+            <div class="kv-item"><span class="k">撤换灵敏度:</span><span class="v">{{ settings.cycle }}</span></div>
+
+            <!-- 第四行 -->
+            <div class="kv-item"><span class="k">爬坡时间:</span><span class="v">{{ settings.ramp }}</span></div>
+            <div class="kv-item"><span class="k">爬坡压力:</span><span class="v">{{ settings.ramp_p }}</span></div>
+            <div class="kv-item"><span class="k">加湿器档位:</span><span class="v">{{ settings.humidifier }}</span></div>
+
+            <!-- 第五行 -->
+            <div class="kv-item"><span class="k">加湿呼吸管路档位:</span><span class="v">{{ settings.tube_humidifier }}</span></div>
+        </div>
+
+        <h4>治疗时长</h4>
+        <div class="time-range-row">本次治疗时间: {{ info.specific_range }}</div>
+        <div class="kv-grid">
+            <div class="kv-item"><span class="k">报告天数:</span><span class="v">{{ usage_stats.report_days }}</span></div>
+            <div class="kv-item"><span class="k">治疗天数:</span><span class="v">{{ usage_stats.therapy_days }}</span></div>
+            <div class="kv-item"><span class="k">日治疗≥4h天数:</span><span class="v">{{ usage_stats.valid_days }}</span></div>
+
+            <div class="kv-item"><span class="k">日治疗&lt;4h天数:</span><span class="v">{{ usage_stats.invalid_days }}</span></div>
+            <div class="kv-item"><span class="k">未治疗天数:</span><span class="v">0d</span></div>
+            <div class="kv-item"><span class="k">≥4h天数占比:</span><span class="v">{{ usage_stats.percent_valid }}</span></div>
+
+            <div class="kv-item"><span class="k">最大日治疗时间:</span><span class="v">{{ usage_stats.max_usage }}</span></div>
+            <div class="kv-item"><span class="k">最小日治疗时间:</span><span class="v">{{ usage_stats.min_usage }}</span></div>
+            <div class="kv-item"><span class="k">治疗总时长:</span><span class="v">{{ usage_stats.total_usage }}</span></div>
+
+            <div class="kv-item"><span class="k">平均治疗时长(总时长/报告天数):</span><span class="v">{{ usage_stats.avg_usage }}</span></div>
+            <div class="kv-item"><span class="k">平均治疗时长(总时长/治疗天数):</span><span class="v">{{ usage_stats.avg_usage }}</span></div>
+        </div>
+
+        <!-- 左下角增加生成日期和SN -->
+        <div class="footer">
+            <div>报告生成日期: {{ info.print_date }} &nbsp;&nbsp; 设备序列号: {{ info.sn }} &nbsp;&nbsp; 设备型号: {{ info.model }}</div>
+            <div>Page 1 of {{ total_pages }}</div>
+        </div>
+    </div>
+
+    <!-- PAGE 2: 总体分析 (底部增加日期/SN) -->
+    <div class="page">
+        <div class="header">
+            <div class="header-info"><div>打印日期: {{ info.print_date }}</div><div>姓名: {{ info.name }}</div><div>报告时段: {{ info.range }}</div></div>
+            <div class="logo">{% if logo_src %}<img src="{{ logo_src }}">{% endif %}</div>
+        </div>
+        <div class="section-bar"><span class="section-title">总体治疗分析</span></div>
+        <div class="stat-box"><div class="stat-head">吸气压</div><div class="stat-row"><span>中值: <b>{{ summary_stats.ipap_median }} cmH2O</b></span><span>90th: <b>{{ summary_stats.ipap_90 }} cmH2O</b></span></div><div class="stat-row"><span>最大值: <b>{{ summary_stats.ipap_max }} cmH2O</b></span><span>95th: <b>{{ summary_stats.ipap_95 }} cmH2O</b></span></div></div>
+        <div class="stat-box"><div class="stat-head">呼气压</div><div class="stat-row"><span>中值: <b>{{ summary_stats.epap_median }} cmH2O</b></span><span>90th: <b>{{ summary_stats.epap_90 }} cmH2O</b></span></div><div class="stat-row"><span>最大值: <b>{{ summary_stats.epap_max }} cmH2O</b></span><span>95th: <b>{{ summary_stats.epap_95 }} cmH2O</b></span></div></div>
+        <div class="stat-box"><div class="stat-head">漏气量</div><div class="stat-row"><span>平均漏气量: <b>{{ summary_stats.leak_avg }} L/min</b></span><span>大量漏气时长: <b>{{ summary_stats.leak_large_time }}</b></span></div></div>
+        <div class="stat-box"><div class="stat-head">呼吸事件</div><div style="background:#f5f5f5; padding:8px; margin: 5px 0 10px 0;"><strong>AHI: {{ summary_stats.ahi }}</strong> &nbsp;&nbsp; <span style="color:#666">AI: {{ summary_stats.ai }} &nbsp; HI: {{ summary_stats.hi }}</span></div><div class="stat-row"><span>OAI: {{ summary_stats.oai }}</span><span>CAI: {{ summary_stats.cai }}</span></div></div>
+        <div style="border:1px solid #999; padding:15px; margin-top:20px; font-size:12px; line-height:1.6;"><strong>报告总结：</strong><br>您本次的使用时长和漏气量都控制得很好，效果也很理想。希望您每天继续坚持使用。</div>
+        <div class="sign-area"><div class="sign-col"><div>日期: <span class="sign-line"></span></div><div style="margin-top:10px;">建议:</div><div class="advice-box"></div></div><div class="sign-col" style="text-align: right;"><div style="text-align: left; display: inline-block;">签字: <span class="sign-line"></span></div></div></div>
+        <div class="footer">
+            <div>报告生成日期: {{ info.print_date }} &nbsp;&nbsp; 设备序列号: {{ info.sn }} &nbsp;&nbsp; 设备型号: {{ info.model }}</div>
+            <div>Page 2 of {{ total_pages }}</div>
+        </div>
+    </div>
+
+    <!-- PAGE 3 - END: 保持之前的图表逻辑，仅替换 Footer -->
+    <!-- 由于篇幅限制，这里省略后续页面代码，您只需要把上面 Footer 的 div 复制替换掉后面所有页面的 Footer 即可 -->
+
+    <!-- PAGE 3: 图表概要 1 -->
+    <div class="page">
+        <div class="header">
+            <div class="header-info"><div>打印日期: {{ info.print_date }}</div><div>姓名: {{ info.name }}</div><div>报告时段: {{ info.range }}</div></div>
+            <div class="logo">{% if logo_src %}<img src="{{ logo_src }}">{% endif %}</div>
+        </div>
+        <div class="section-bar"><span class="section-title">图表概要</span></div>
+        <h4>吸气压 (95th & Max)</h4><div id="trend_ipap" class="chart-lg"></div>
+        <h4>呼气压 (95th & Max)</h4><div id="trend_epap" class="chart-lg"></div>
+        <h4>平均漏气量</h4><div id="trend_leak" class="chart-lg"></div>
+        <div class="footer">
+            <div>报告生成日期: {{ info.print_date }} &nbsp;&nbsp; 设备序列号: {{ info.sn }} &nbsp;&nbsp; 设备型号: {{ info.model }}</div>
+            <div>Page 3 of {{ total_pages }}</div>
+        </div>
+    </div>
+
+    <!-- PAGE 4: 图表概要 2 -->
+    <div class="page">
+        <div class="header">
+            <div class="header-info"><div>打印日期: {{ info.print_date }}</div><div>姓名: {{ info.name }}</div><div>报告时段: {{ info.range }}</div></div>
+            <div class="logo">{% if logo_src %}<img src="{{ logo_src }}">{% endif %}</div>
+        </div>
+        <h4>AHI 指数趋势</h4><div id="trend_ahi" class="chart-lg"></div>
+        <h4>每日使用时长(小时)</h4><div id="trend_usage" class="chart-lg"></div>
+        <div class="footer">
+            <div>报告生成日期: {{ info.print_date }} &nbsp;&nbsp; 设备序列号: {{ info.sn }} &nbsp;&nbsp; 设备型号: {{ info.model }}</div>
+            <div>Page 4 of {{ total_pages }}</div>
+        </div>
+    </div>
+
+    <!-- PAGE 5: 汇总甘特图 -->
+    <div class="page">
+        <div class="header">
+            <div class="header-info"><div>打印日期: {{ info.print_date }}</div><div>姓名: {{ info.name }}</div><div>报告时段: {{ info.range }}</div></div>
+            <div class="logo">{% if logo_src %}<img src="{{ logo_src }}">{% endif %}</div>
+        </div>
+        <div class="section-bar"><span class="section-title">详细分析 (时段分布)</span></div>
+        <h4>运行时长分布图 (所有日期汇总)</h4>
+        <div id="chart_gantt_all" class="chart-gantt-all"></div>
+        <div class="footer">
+            <div>报告生成日期: {{ info.print_date }} &nbsp;&nbsp; 设备序列号: {{ info.sn }} &nbsp;&nbsp; 设备型号: {{ info.model }}</div>
+            <div>Page 5 of {{ total_pages }}</div>
+        </div>
+    </div>
+
+    <!-- PAGE 6+: 每日详情 -->
+    {% for day in daily_records %}
+    <div class="page">
+        <div class="header">
+            <div class="header-info"><div>打印日期: {{ info.print_date }}</div><div>姓名: {{ info.name }}</div><div>报告时段: {{ info.range }}</div></div>
+            <div class="logo">{% if logo_src %}<img src="{{ logo_src }}">{% endif %}</div>
+        </div>
+        <div class="section-bar"><span class="section-title">详细分析</span><span class="section-sub">{{ day.date }} 数据详情</span></div>
+
+        <h4>{{ day.date }} 压力详图 (cmH2O)</h4>
+        <div id="day_pressure_{{ loop.index0 }}" class="chart-lg"></div>
+
+        <h4>{{ day.date }} 漏气量详图 (L/min)</h4>
+        <div id="day_leak_{{ loop.index0 }}" class="chart-sm"></div>
+
+        <h4>{{ day.date }} 呼吸事件详图</h4>
+        <div id="day_event_{{ loop.index0 }}" class="chart-sm"></div>
+
+        <div class="footer">
+            <div>报告生成日期: {{ info.print_date }} &nbsp;&nbsp; 设备序列号: {{ info.sn }} &nbsp;&nbsp; 设备型号: {{ info.model }}</div>
+            <div>Page {{ loop.index + 5 }} of {{ total_pages }}</div>
+        </div>
+    </div>
+    {% endfor %}
+
+    <!-- 脚本部分 (保持不变) -->
+    <script>
+        var summary = {{ summary_charts | tojson }};
+        var daily = {{ daily_records | tojson }};
+        var dates = summary.dates;
+        var colorBlue = '#2d74b8'; var colorGrey = '#a6a6a6'; var colorOrange = '#ed7d31'; var colorRed = '#c00000'; var colorGreen = '#92d050';
+        var commonGrid = { top: 30, bottom: 25, right: 20, left: 40 };
+
+        try {
+            echarts.init(document.getElementById('trend_ipap')).setOption({ animation: false, grid: commonGrid, legend: { right: 10 }, xAxis: { data: dates, axisLabel: { fontSize: 10 } }, yAxis: { name: 'cmH2O' }, series: [{ name: '中值', type: 'bar', data: summary.ipap_median, itemStyle: { color: colorBlue } }, { name: '95th', type: 'bar', data: summary.ipap_95, itemStyle: { color: colorGrey } }, { name: '最大值', type: 'bar', data: summary.ipap_max, itemStyle: { color: colorOrange } }] });
+            echarts.init(document.getElementById('trend_epap')).setOption({ animation: false, grid: commonGrid, legend: { right: 10 }, xAxis: { data: dates, axisLabel: { fontSize: 10 } }, yAxis: { name: 'cmH2O' }, series: [{ name: '中值', type: 'bar', data: summary.epap_median, itemStyle: { color: colorBlue } }, { name: '95th', type: 'bar', data: summary.epap_95, itemStyle: { color: colorGrey } }, { name: '最大值', type: 'bar', data: summary.epap_max, itemStyle: { color: colorOrange } }] });
+            echarts.init(document.getElementById('trend_leak')).setOption({ animation: false, grid: commonGrid, xAxis: { data: dates, axisLabel: { fontSize: 10 } }, yAxis: { name: 'L/min' }, series: [{ name: '平均', type: 'bar', data: summary.leak_avg, itemStyle: { color: colorBlue }, barWidth: 20 }] });
+            echarts.init(document.getElementById('trend_ahi')).setOption({ animation: false, grid: commonGrid, legend: { right: 10 }, xAxis: { data: dates, axisLabel: { fontSize: 10 } }, yAxis: { name: 'Index' }, series: [{ name: 'AHI', type: 'bar', data: summary.ahi, itemStyle: { color: colorBlue }, barWidth: 15 }, { name: 'AI', type: 'bar', data: summary.ai, itemStyle: { color: colorGrey }, barWidth: 15 }, { name: 'HI', type: 'bar', data: summary.hi, itemStyle: { color: colorRed }, barWidth: 15 }] });
+            echarts.init(document.getElementById('trend_usage')).setOption({ animation: false, grid: commonGrid, xAxis: { data: dates, axisLabel: { fontSize: 10 } }, yAxis: { name: 'h' }, series: [{ name: '时长', type: 'bar', data: summary.usage_hours, itemStyle: { color: colorGrey }, barWidth: 20 }] });
+
+            var ganttYData = daily.map(d => d.date);
+            echarts.init(document.getElementById('chart_gantt_all')).setOption({
+                animation: false,
+                grid: { top: 30, bottom: 30, left: 100, right: 20 },
+                xAxis: {
+                    type: 'category',
+                    data: ['21', '22', '23', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'],
+                    splitLine: { show: true, lineStyle: { color: '#eee' } },
+                    boundaryGap: false
+                },
+                yAxis: { type: 'category', data: ganttYData, splitLine: { show: false } },
+                series: [{
+                    type: 'custom',
+                    renderItem: function(params, api) {
+                        var categoryIndex = api.value(1);
+                        var startX = api.coord([1, categoryIndex]);
+                        var duration = daily[categoryIndex].usage_duration;
+                        var endX = api.coord([1 + duration, categoryIndex]);
+                        return {
+                            type: 'rect',
+                            shape: { x: startX[0], y: startX[1] - 10, width: endX[0] - startX[0], height: 20 },
+                            style: { fill: colorGreen }
+                        };
+                    },
+                    data: daily.map((d, i) => [0, i])
+                }]
+            });
+
+            daily.forEach(function(day, idx){
+                echarts.init(document.getElementById('day_pressure_'+idx)).setOption({
+                    animation: false, legend: { right: 10, data: ['IPAP', 'EPAP'] }, grid: commonGrid,
+                    xAxis: { data: day.time_axis, axisLabel: { interval: 30 } },
+                    yAxis: { min: 0, max: 25, name: 'cmH2O' },
+                    series: [
+                        { name: 'IPAP', type: 'line', data: day.ipap, showSymbol: false, lineStyle: { color: colorBlue, width: 2 } },
+                        { name: 'EPAP', type: 'line', data: day.epap, showSymbol: false, lineStyle: { color: colorRed, type: 'dashed', width: 2 } }
+                    ]
+                });
+                echarts.init(document.getElementById('day_leak_'+idx)).setOption({
+                    animation: false, legend: { right: 10 }, grid: commonGrid,
+                    xAxis: { data: day.time_axis, axisLabel: { interval: 30 } },
+                    yAxis: { name: 'L/min' },
+                    series: [{ name: '漏气量', type: 'line', data: day.leak, showSymbol: false, lineStyle: { color: colorRed, width: 1.5 }, areaStyle: { color: 'rgba(192, 0, 0, 0.1)' } }]
+                });
+                echarts.init(document.getElementById('day_event_'+idx)).setOption({
+                    animation: false,
+                    legend: { right: 10, itemWidth: 10, itemHeight: 10 },
+                    grid: { top: 30, bottom: 25, left: 50, right: 20 },
+                    xAxis: { data: day.time_axis, axisLabel: { interval: 30 } },
+                    yAxis: {
+                        type: 'category',
+                        data: ['LL', 'FL', 'HYP', 'CSA', 'OSA'],
+                        splitLine: { show: true, lineStyle: { type: 'dashed', color: '#eee' } }
+                    },
+                    series: [
+                        { name: 'OSA', type: 'scatter', symbolSize: 8, itemStyle: { color: '#ff4d4f' },
+                          data: day.events.filter(e=>e.t==='OSA').map(e=>[e.idx, 'OSA']) },
+                        { name: 'CSA', type: 'scatter', symbolSize: 8, itemStyle: { color: '#faad14' },
+                          data: day.events.filter(e=>e.t==='CSA').map(e=>[e.idx, 'CSA']) },
+                        { name: 'HYP', type: 'scatter', symbolSize: 8, itemStyle: { color: '#52c41a' },
+                          data: day.events.filter(e=>e.t==='HYP').map(e=>[e.idx, 'HYP']) },
+                        { name: 'FL', type: 'scatter', symbolSize: 8, itemStyle: { color: '#1890ff' },
+                          data: day.events.filter(e=>e.t==='FL').map(e=>[e.idx, 'FL']) },
+                        { name: 'LL', type: 'scatter', symbol: 'triangle', symbolSize: 10, itemStyle: { color: '#722ed1' },
+                          data: day.events.filter(e=>e.t==='LL').map(e=>[e.idx, 'LL']) }
+                    ]
+                });
+            });
+        } catch (e) { console.error(e); }
+    </script>
+</body>
+</html>

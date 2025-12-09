@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from core.embeddings.bge_large_zh_embeddings import get_bge_large_zh_embeddings
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
+
 class KnowledgeBaseService:
     """知识库业务逻辑服务类"""
 
