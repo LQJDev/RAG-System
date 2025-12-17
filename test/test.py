@@ -12,7 +12,7 @@ if __name__ == "__main__":
     logo_file = "../template/logo.jpg"  # 确保目录下有这个图片，或者png
 
     if not os.path.exists(data_file):
-        print("❌ Error: data.txt not found")
+        print("Error: data.txt not found")
         exit()
 
     with open(data_file, 'r', encoding='utf-8') as f:

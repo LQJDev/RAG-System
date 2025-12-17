@@ -1,5 +1,9 @@
 import numpy as np
+import os  # 用于读取环境变量中的API Key
 from datetime import datetime, timedelta
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import SystemMessage, HumanMessage
+from dotenv import load_dotenv
 
 # ================= 配置：静态信息 =================
 STATIC_INFO = {
@@ -45,6 +49,60 @@ class ReportGenerator:
         except:
             return -1
 
+    # ================= 简化：仅生成AI总结 =================
+    def _generate_ai_summary(self, usage_stats, summary_stats, report_days):
+        """
+        使用LangChain调用DeepSeek API生成睡眠报告总结（仅总结，无单独建议）
+        返回：报告总结（report_summary）
+        """
+        # 1. 整理关键数据为Prompt文本
+        summary_data = f"""
+        睡眠治疗报告关键数据：
+        1. 报告周期：{report_days}天，有效治疗天数占比{usage_stats['percent_valid']}，总治疗时长{usage_stats['total_usage']}，日均治疗时长{usage_stats['avg_usage']}
+        2. 压力指标：吸气压中位数{summary_stats['ipap_median']} cmH₂O，95分位数{summary_stats['ipap_95']} cmH₂O，最大值{summary_stats['ipap_max']} cmH₂O；呼气压中位数{summary_stats['epap_median']} cmH₂O，95分位数{summary_stats['epap_95']} cmH₂O，最大值{summary_stats['epap_max']} cmH₂O
+        3. 漏气情况：平均漏气量{summary_stats['leak_avg']} L/min，大量漏气时长{summary_stats['leak_large_time']}
+        4. 呼吸事件：AHI指数{summary_stats['ahi']}，AI指数{summary_stats['ai']}，HI指数{summary_stats['hi']}，阻塞性呼吸暂停指数{summary_stats['oai']}，中枢性呼吸暂停指数{summary_stats['cai']}
+        """
+
+        try:
+            load_dotenv()
+            # 2. 初始化ChatOpenAI（调用DeepSeek API）
+            chat_model = ChatOpenAI(
+                model="deepseek-chat",  # DeepSeek 官方推荐模型名
+                api_key=os.getenv("DEEPSEEK_API_KEY"),  # 从环境变量获取API Key
+                base_url="https://api.deepseek.com/v1",  # DeepSeek 官方API地址
+                temperature=0.3,  # 低随机性，保证总结严谨
+                timeout=10  # 超时时间
+            )
+
+            # 3. 构造消息列表（明确要求仅生成总结，无需单独建议）
+            messages = [
+                SystemMessage(
+                    content="""你是三甲医院睡眠中心的数据分析专家，负责生成临床级睡眠治疗报告总结。要求：
+            1. 核心数据提炼：重点呈现治疗依从性（日均时长/有效占比）、压力参数稳定性（吸呼气压中值/关键分位）、漏气控制效果（平均漏气量/无大量漏气）、呼吸事件控制（AHI及核心细分指标），无需逐一罗列所有分位值，优先展示有临床意义的数据；
+            2. 解读性表达：结合数据逻辑加入客观判断（如“治疗依从性优秀，为疗效奠定基础”“压力调节平稳，未出现异常峰值”“AHI指数处于正常范围，呼吸事件得到有效控制”），避免孤立堆砌数据；
+            3. 风格与篇幅：语言正式严谨，符合医疗文书规范，200字左右，仅基于给定数据总结事实与客观结论，不添加额外建议或无关推测。"""
+                ),
+                HumanMessage(
+                    content=f"请基于以下睡眠治疗数据，生成报告总结：\n{summary_data}"
+                )
+            ]
+
+            # 4. 调用模型生成总结
+            response = chat_model.invoke(messages)
+            report_summary = response.content.strip()
+            print(f"AI总结生成成功：{report_summary}")
+
+            return report_summary
+
+        except Exception as e:
+            print(f"AI总结生成失败：{e}，使用默认总结")
+            # 5. 兜底方案：默认总结
+            default_summary = f"""
+            本次睡眠治疗报告周期为{report_days}天，总治疗时长{usage_stats['total_usage']}，日均治疗时长{usage_stats['avg_usage']}，有效治疗天数占比{usage_stats['percent_valid']}，治疗依从性良好。吸气压中位数{summary_stats['ipap_median']} cmH₂O，呼气压中位数{summary_stats['epap_median']} cmH₂O，压力指标整体稳定；平均漏气量{summary_stats['leak_avg']} L/min，无大量漏气情况。AHI指数{summary_stats['ahi']}（正常范围＜5），呼吸事件控制良好，整体治疗效果理想。
+            """.strip()
+            return default_summary
+
     def generate_context(self):
         sorted_dates = sorted(self.parser.all_dates, reverse=True)
         daily_records = []
@@ -59,7 +117,6 @@ class ReportGenerator:
         start_time_str = ""
         end_time_str = ""
         if sorted_dates:
-            # 这里的逻辑是：最早那一天的开始时间 —— 最晚那一天的结束时间
             first_day = sorted_dates[-1]  # 最早日期
             last_day = sorted_dates[0]  # 最新日期
 
@@ -143,7 +200,35 @@ class ReportGenerator:
         total_h_num = sum(list_usage)
         avg_h_num = total_h_num / len(list_usage) if list_usage else 0  # 平均时长
 
-        return {
+        # --- 构建使用统计和总结统计 ---
+        usage_stats = {
+            "report_days": f"{len(sorted_dates)}d",
+            "therapy_days": f"{len([x for x in list_usage if x > 0])}d",
+            "valid_days": f"{len([x for x in list_usage if x >= 4])}d",
+            "invalid_days": f"{len([x for x in list_usage if x < 4])}d",
+            "percent_valid": f"{round(len([x for x in list_usage if x >= 4]) / len(list_usage) * 100, 1) if list_usage else 0} %",
+            "max_usage": fmt_h_min(max(list_usage) if list_usage else 0),
+            "min_usage": fmt_h_min(min(list_usage) if list_usage else 0),
+            "avg_usage": fmt_h_min(avg_h_num),  # 新增：平均治疗时长
+            "total_usage": fmt_h_min(total_h_num)
+        }
+
+        summary_stats = {
+            "ipap_median": get_p(all_ipap, 50), "ipap_90": get_p(all_ipap, 90),
+            "ipap_95": get_p(all_ipap, 95), "ipap_max": round(max(all_ipap), 1) if all_ipap else 0,
+            "epap_median": get_p(all_epap, 50), "epap_90": get_p(all_epap, 90),
+            "epap_95": get_p(all_epap, 95), "epap_max": round(max(all_epap), 1) if all_epap else 0,
+            "leak_avg": get_avg(all_leak), "leak_large_time": "0 min",
+            "ahi": get_avg(list_ahi), "ai": get_avg(list_ai), "hi": get_avg(list_hi),
+            "oai": 0.0, "cai": 0.0
+        }
+
+        # ================= 调用AI生成总结（仅总结） =================
+        report_days = len(sorted_dates)
+        report_summary = self._generate_ai_summary(usage_stats, summary_stats, report_days)
+
+        # --- 构建最终上下文（仅添加report_summary） ---
+        context = {
             "info": {
                 **STATIC_INFO,
                 "print_date": datetime.now().strftime("%Y-%m-%d"),
@@ -151,26 +236,8 @@ class ReportGenerator:
                 "specific_range": specific_range  # 治疗时长部分的具体时段
             },
             "settings": STATIC_INFO,
-            "usage_stats": {
-                "report_days": f"{len(sorted_dates)}d",
-                "therapy_days": f"{len([x for x in list_usage if x > 0])}d",
-                "valid_days": f"{len([x for x in list_usage if x >= 4])}d",
-                "invalid_days": f"{len([x for x in list_usage if x < 4])}d",
-                "percent_valid": f"{round(len([x for x in list_usage if x >= 4]) / len(list_usage) * 100, 1) if list_usage else 0} %",
-                "max_usage": fmt_h_min(max(list_usage) if list_usage else 0),
-                "min_usage": fmt_h_min(min(list_usage) if list_usage else 0),
-                "avg_usage": fmt_h_min(avg_h_num),  # 新增：平均治疗时长
-                "total_usage": fmt_h_min(total_h_num)
-            },
-            "summary_stats": {
-                "ipap_median": get_p(all_ipap, 50), "ipap_90": get_p(all_ipap, 90),
-                "ipap_95": get_p(all_ipap, 95), "ipap_max": round(max(all_ipap), 1) if all_ipap else 0,
-                "epap_median": get_p(all_epap, 50), "epap_90": get_p(all_epap, 90),
-                "epap_95": get_p(all_epap, 95), "epap_max": round(max(all_epap), 1) if all_epap else 0,
-                "leak_avg": get_avg(all_leak), "leak_large_time": "0 min",
-                "ahi": get_avg(list_ahi), "ai": get_avg(list_ai), "hi": get_avg(list_hi),
-                "oai": 0.0, "cai": 0.0
-            },
+            "usage_stats": usage_stats,
+            "summary_stats": summary_stats,
             "summary_charts": {
                 "dates": dates_asc,
                 "ipap_median": [get_p(self.parser.data_store[d]['pressure']['ipap'], 50) for d in dates_asc],
@@ -184,5 +251,9 @@ class ReportGenerator:
                 "usage_hours": list_usage[::-1]
             },
             "daily_records": daily_records,
-            "total_pages": 5 + len(daily_records)
+            "total_pages": 5 + len(daily_records),
+            # ================= 仅保留报告总结 =================
+            "report_summary": report_summary
         }
+
+        return context

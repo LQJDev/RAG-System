@@ -105,7 +105,7 @@ def append_to_knowledge_base(
 
     # 5️⃣ 添加到向量库
     added_count = vector_store.add_documents(new_documents)
-    print(f"🎯 已向知识库 '{name}' 添加 {added_count} 个新文档块")
+    print(f"已向知识库 '{name}' 添加 {added_count} 个新文档块")
 
     return vector_store, added_count
 
@@ -142,11 +142,22 @@ def delete_langchain_chroma(
 
 # 测试
 if __name__ == "__main__":
-    source_path = "../data/知识库资料_22033/2. 日常健康咨询"
+    source_path = "../data/知识库资料_22033/2. 日常健康咨询/呼吸相关知识更新/临床呼吸生理学"
     persist_dir = "vector_store/md_chroma_db"
-    kb_name = "daily_health_consult"  # ✅ 知识库名称
+    kb_name = "daily_health_consult"  # 知识库名称
 
-    store, count = build_knowledge_base(
+    # store, count = build_knowledge_base(
+    #     source_path=source_path,
+    #     persist_dir=persist_dir,
+    #     name=kb_name,
+    #     chunk_size=1500,
+    #     chunk_overlap=100,
+    #     batch_size=20
+    # )
+    # print(f"知识库构建完成，共添加 {count} 个文本块")
+    # delete_langchain_chroma("vector_store/md_chroma_db", "daily_health_consult")
+
+    store, count = append_to_knowledge_base(
         source_path=source_path,
         persist_dir=persist_dir,
         name=kb_name,
@@ -155,4 +166,3 @@ if __name__ == "__main__":
         batch_size=20
     )
     print(f"知识库构建完成，共添加 {count} 个文本块")
-    # delete_langchain_chroma("vector_store/md_chroma_db", "daily_health_consult")
